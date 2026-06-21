@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: triagem-api
+
+  # Configurações do Banco de Dados H2
+  datasource:
+    url: jdbc:h2:mem:triagemdb;DB_CLOSE_DELAY=-1
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  # Console do H2 para o avaliador inspecionar o banco se quiser (acessível em localhost:8080/h2-console)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # Atualização automática das tabelas pelo Hibernate
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Configuração de Log Mínimo para Diagnóstico (Exigido pelo Teste)
+logging:
+  level:
+    root: INFO
+    com.attus.triagemapi: DEBUG

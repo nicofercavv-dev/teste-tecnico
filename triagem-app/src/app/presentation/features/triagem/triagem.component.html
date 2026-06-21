@@ -1,0 +1,165 @@
+<div class="triagem-container">
+  <header class="triagem-header">
+    <h1>Painel de Triagem Jurídica</h1>
+    <div class="badges">
+      <span
+        >Total: <strong>{{ store.totalProcessos() }}</strong></span
+      >
+      <span
+        >Pendentes:
+        <strong class="badge-alerta">{{ store.processosPendentes().length }}</strong></span
+      >
+    </div>
+  </header>
+
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>Fazer Triagem de Novo Processo</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="formulario" (ngSubmit)="submeterFormulario()" class="triagem-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Número do Processo</mat-label>
+          <input
+            matInput
+            formControlName="numeroProcesso"
+            placeholder="0012345-67.2026.8.00.0000"
+            mask="0000000-00.0000.0.00.0000"
+            [dropSpecialCharacters]="true"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo de Ação</mat-label>
+          <mat-select formControlName="tipoAcao">
+            @for (opcao of listaTiposAcao; track opcao.chave) {
+              <mat-option [value]="opcao.chave">{{ opcao.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Urgência</mat-label>
+          <mat-select formControlName="urgencia">
+            <mat-option value="BAIXA">Baixa</mat-option>
+            <mat-option value="MEDIA">Média</mat-option>
+            <mat-option value="ALTA">Alta</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Descrição Resumida / Objeto do Processo</mat-label>
+          <textarea matInput formControlName="descricaoResumida" rows="1"></textarea>
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="formulario.invalid || store.loading()"
+        >
+          @if (store.loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Triar e Salvar Processo
+          }
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  @if (store.erro()) {
+    <div class="erro-mensagem"><mat-icon>error</mat-icon> {{ store.erro() }}</div>
+  }
+
+  <mat-card class="table-card">
+    @if (store.processos().length === 0 && !store.loading()) {
+      <div class="empty-state">
+        <p>Nenhum processo pendente de triagem encontrado.</p>
+      </div>
+    } @else {
+      <table mat-table [dataSource]="dataSource" class="mat-elevation-z2">
+        <ng-container matColumnDef="numeroProcesso">
+          <th mat-header-cell *matHeaderCellDef>Número</th>
+          <td mat-cell *matCellDef="let p">
+            <div
+              class="celula-copiavel"
+              [cdkCopyToClipboard]="p.numeroProcesso"
+              (cdkCopyToClipboardCopied)="notificarCopia()"
+              matTooltip="Clique para copiar o número do processo"
+              matTooltipPosition="above"
+            >
+              <span class="numero-texto">{{
+                p.numeroProcesso | mask: '0000000-00.0000.0.00.0000'
+              }}</span>
+              <mat-icon class="icone-copia">content_copy</mat-icon>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipoAcao">
+          <th mat-header-cell *matHeaderCellDef>Tipo de Ação</th>
+          <td mat-cell *matCellDef="let p">{{ traduzirTipoAcao(p.tipoAcao) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="urgencia">
+          <th mat-header-cell *matHeaderCellDef>Urgência</th>
+          <td mat-cell *matCellDef="let p">
+            <span class="badge-urgencia" [ngClass]="p.urgencia.toLowerCase()">
+              {{ Formatador.formatarUrgencia(p.urgencia) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let p">
+            <span class="badge-status {{ p.status.toLowerCase() }}">{{
+              Formatador.formatarStatus(p.status)
+            }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef>Ações de Triagem</th>
+          <td mat-cell *matCellDef="let p">
+            @if (p.status === 'PENDENTE') {
+              <button
+                mat-stroked-button
+                color="accent"
+                size="small"
+                (click)="alterarStatus(p.id, StatusProcessoEnum.EM_ANALISE)"
+              >
+                Iniciar Análise
+              </button>
+            }
+            @if (p.status === 'EM_ANALISE') {
+              <button
+                mat-flat-button
+                color="primary"
+                size="small"
+                (click)="alterarStatus(p.id, StatusProcessoEnum.CONCLUIDO)"
+              >
+                Concluir Triagem
+              </button>
+            }
+            @if (p.status === 'CONCLUIDO') {
+              <span class="texto-sucesso"><mat-icon>check_circle</mat-icon> Pronto</span>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="colunasExibidas"></tr>
+        <tr mat-row *matRowDef="let row; columns: colunasExibidas"></tr>
+      </table>
+
+      <mat-paginator
+        [pageSizeOptions]="[5, 10, 20]"
+        [pageSize]="5"
+        showFirstLastButtons
+        aria-label="Selecione a página dos processos"
+      >
+      </mat-paginator>
+    }
+  </mat-card>
+</div>
