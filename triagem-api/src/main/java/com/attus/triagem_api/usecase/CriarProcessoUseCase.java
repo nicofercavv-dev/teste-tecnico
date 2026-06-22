@@ -21,13 +21,11 @@ public class CriarProcessoUseCase {
     public Processo executar(Processo novoProcesso) {
         log.info("Iniciando triagem do novo processo número: {}", novoProcesso.getNumeroProcesso());
 
-        // Regra de Negócio: Valida duplicidade
         if (processoRepository.buscarPorNumero(novoProcesso.getNumeroProcesso()).isPresent()) {
             log.error("Falha ao criar processo: Número {} já está cadastrado no sistema", novoProcesso.getNumeroProcesso());
             throw new IllegalArgumentException("Já existe um processo cadastrado com este número.");
         }
 
-        // Regra de Negócio: Todo processo recém-criado na triagem entra como PENDENTE
         novoProcesso.setStatus(StatusProcesso.PENDENTE);
         if (novoProcesso.getDataRecebimento() == null) {
             novoProcesso.setDataRecebimento(LocalDate.now());

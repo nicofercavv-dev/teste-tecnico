@@ -1,7 +1,7 @@
 <div class="triagem-container">
   <header class="triagem-header">
     <h1>Painel de Triagem Jurídica</h1>
-    <div class="badges">
+    <!-- <div class="badges">
       <span
         >Total: <strong>{{ store.totalProcessos() }}</strong></span
       >
@@ -9,7 +9,7 @@
         >Pendentes:
         <strong class="badge-alerta">{{ store.processosPendentes().length }}</strong></span
       >
-    </div>
+    </div> -->
   </header>
 
   <mat-card class="form-card">
@@ -154,8 +154,10 @@
       </table>
 
       <mat-paginator
+        [length]="store.totalElementos()"
+        [pageSize]="tamanhoPagina"
         [pageSizeOptions]="[5, 10, 20]"
-        [pageSize]="5"
+        (page)="aoMudarPagina($event)"
         showFirstLastButtons
         aria-label="Selecione a página dos processos"
       >

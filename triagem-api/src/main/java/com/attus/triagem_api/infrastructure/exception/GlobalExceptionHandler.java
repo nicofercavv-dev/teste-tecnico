@@ -1,11 +1,14 @@
 package com.attus.triagem_api.infrastructure.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,6 +22,16 @@ public class GlobalExceptionHandler {
         Map<String, String> erro = new HashMap<>();
         erro.put("erro", ex.getMessage());
         return ResponseEntity.badRequest().body(erro);
+    }
+
+    @ExceptionHandler(ProcessoNaoEncontradoException.class)
+    public ResponseEntity<ProblemDetail> handleProcessoNaoEncontrado(ProcessoNaoEncontradoException ex) {
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("Recurso Não Encontrado");
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problemDetail);
     }
 
     @ExceptionHandler(IllegalStateException.class)

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject, OnInit, ViewChild } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +9,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { TriagemStore } from './store/triagem.store';
-import { UrgenciaProcesso } from '../../../domain/models/urgencia-processo.enum';
 import { StatusProcesso } from '../../../domain/models/status-processo.enum';
 import { TipoAcao } from '../../../domain/models/tipo-acao.enum';
 import { NgxMaskDirective, NgxMaskPipe } from 'ngx-mask';
@@ -17,7 +16,8 @@ import { FormatadorEnum } from '../../shared/utils/formatador-enum';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ClipboardModule } from '@angular/cdk/clipboard';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { Processo } from '../../../domain/models/processo.model';
 
 @Component({
   selector: 'app-triagem',
@@ -41,9 +41,8 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
   templateUrl: './triagem.component.html',
   styleUrls: ['./triagem.component.scss'],
 })
-export default class TriagemComponent implements OnInit {
+export class TriagemComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
-  // Injetando nossa Store de Signals do DDD
   public store = inject(TriagemStore);
   private fb = inject(FormBuilder);
 
@@ -61,43 +60,51 @@ export default class TriagemComponent implements OnInit {
     CONCLUIDO: 'CONCLUIDO' as StatusProcesso,
   };
 
-  // Definição das colunas da tabela do Material
   public colunasExibidas: string[] = ['numeroProcesso', 'tipoAcao', 'urgencia', 'status', 'acoes'];
-  public dataSource = new MatTableDataSource<any>([]);
+  public dataSource = new MatTableDataSource<Processo>([]);
+
+  public paginaAtual = 0;
+  public tamanhoPagina = 5;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   constructor() {
-    // Efeito moderno do Angular 21: Sempre que o Signal de processos mudar na Store,
-    // ele atualiza automaticamente o DataSource da tabela
     effect(() => {
       this.dataSource.data = this.store.processos();
-      if (this.paginator) {
-        this.dataSource.paginator = this.paginator;
-      }
     });
   }
 
-  // Formulário Reativo fortemente tipado com validações básicas
   public formulario = this.fb.group({
     numeroProcesso: ['', [Validators.required, Validators.minLength(20), Validators.maxLength(20)]],
-    tipoAcao: [null, [Validators.required, Validators.maxLength(100)]],
-    urgencia: [null, [Validators.required]],
+    tipoAcao: new FormControl<TipoAcao | null>(null, [
+      Validators.required,
+      Validators.maxLength(100),
+    ]),
+    urgencia: new FormControl<string | null>(null, [Validators.required]),
     descricaoResumida: ['', [Validators.maxLength(500)]],
   });
 
   ngOnInit(): void {
-    // Carrega a lista de processos ao iniciar a tela
-    this.store.carregarProcessos();
+    this.store.carregarProcessos(this.paginaAtual, this.tamanhoPagina);
   }
 
   ngAfterViewInit() {
-    this.dataSource.paginator = this.paginator;
+    if (this.paginator) {
+      this.paginator._intl.itemsPerPageLabel = 'Itens por página:';
+      this.paginator._intl.nextPageLabel = 'Próxima página';
+      this.paginator._intl.previousPageLabel = 'Página anterior';
 
-    // Tradução opcional do Paginator para Português
-    this.paginator._intl.itemsPerPageLabel = 'Itens por página:';
-    this.paginator._intl.nextPageLabel = 'Próxima página';
-    this.paginator._intl.previousPageLabel = 'Página anterior';
+      this.paginator._intl.getRangeLabel = (page: number, pageSize: number, length: number) => {
+        if (length === 0 || pageSize === 0) {
+          return `0 de ${length}`;
+        }
+        length = Math.max(length, 0);
+        const startIndex = page * pageSize;
+        const endIndex =
+          startIndex < length ? Math.min(startIndex + pageSize, length) : startIndex + pageSize;
+        return `${startIndex + 1} – ${endIndex} de ${length}`;
+      };
+    }
   }
 
   async submeterFormulario(): Promise<void> {
@@ -125,5 +132,12 @@ export default class TriagemComponent implements OnInit {
       duration: 2000,
       panelClass: ['snackbar-sucesso'],
     });
+  }
+
+  aoMudarPagina(evento: PageEvent): void {
+    this.paginaAtual = evento.pageIndex;
+    this.tamanhoPagina = evento.pageSize;
+
+    this.store.carregarProcessos(this.paginaAtual, this.tamanhoPagina);
   }
 }

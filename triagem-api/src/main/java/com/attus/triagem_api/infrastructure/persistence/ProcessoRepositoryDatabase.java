@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Repository
 public class ProcessoRepositoryDatabase implements ProcessoRepository {
@@ -36,7 +35,6 @@ public class ProcessoRepositoryDatabase implements ProcessoRepository {
 
         List<Processo> listaDominio = pageEntity.getContent().stream()
                 .map(mapper::toDomain).toList();
-//                .collect(Collectors.toList());
         return new Pagina<>(
                 listaDominio,
                 pageEntity.getTotalElements(),

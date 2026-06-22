@@ -9,6 +9,11 @@ import com.attus.triagem_api.infrastructure.mapper.ProcessoHttpMapper;
 import com.attus.triagem_api.usecase.AtualizarStatusProcessoUseCase;
 import com.attus.triagem_api.usecase.CriarProcessoUseCase;
 import com.attus.triagem_api.usecase.ListarProcessosUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +24,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/processos")
+@Tag(name = "Processos", description = "Endpoints para gerenciamento e triagem de processos judiciais")
 public class ProcessoController {
 
     private final CriarProcessoUseCase criarProcessoUseCase;
@@ -36,6 +42,11 @@ public class ProcessoController {
         this.httpMapper = httpMapper;
     }
 
+    @Operation(summary = "Cadastrar um novo processo", description = "Realiza a triagem inicial e salva um processo com o número padronizado do CNJ.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Processo criado e triado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados de requisição inválidos ou número CNJ malformado")
+    })
     @PostMapping
     public ResponseEntity<ProcessoResponseDTO> criarProcesso(@RequestBody @Valid ProcessoRequestDTO request) {
         Processo dominioInput = httpMapper.toDomain(request);
@@ -43,6 +54,7 @@ public class ProcessoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(httpMapper.toResponse(dominioOutput));
     }
 
+    @Operation(summary = "Listar processos paginados", description = "Recupera uma lista de processos do banco de dados utilizando paginação Server-Side.")
     @GetMapping
     public ResponseEntity<Pagina<ProcessoResponseDTO>> listar(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "5") Integer size) {
         Pagina<Processo> resposta = listarProcessosUseCase.executar(page, size);
@@ -60,9 +72,31 @@ public class ProcessoController {
         return ResponseEntity.ok(paginaResponse);
     }
 
+    @Operation(
+            summary = "Atualizar o status de um processo",
+            description = "Modifica o estado atual de um processo na triagem (ex: PENDENTE -> EM_ANALISE -> CONCLUIDO)."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Status do processo atualizado com sucesso"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Status fornecido é inválido ou requisição malformada"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Processo não encontrado para atualização"
+            )
+    })
     @PatchMapping("/{id}/status")
-    public ResponseEntity<ProcessoResponseDTO> atualizarStatus(@PathVariable Long id,
-                                                               @RequestParam StatusProcesso novoStatus) {
+    public ResponseEntity<ProcessoResponseDTO> atualizarStatus(
+            @Parameter(description = "ID numérico do processo a ser atualizado", example = "1")
+            @PathVariable Long id,
+
+            @Parameter(description = "Novo status a ser atribuído ao processo", example = "EM_ANALISE")
+            @RequestParam StatusProcesso novoStatus) {
         Processo dominioOutput = atualizarStatusProcessoUseCase.executar(id, novoStatus);
         return ResponseEntity.ok(httpMapper.toResponse(dominioOutput));
     }
